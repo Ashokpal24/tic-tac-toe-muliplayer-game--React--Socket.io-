@@ -1,11 +1,89 @@
-const express = require("express");
-const app = express();
+// const express = require("express");
+const { WebSocketServer } = require("ws");
+const { ShortUniqueId } = require("short-unique-id");
+// const app = express();
 const PORT = 3000;
+let roomID;
+let hostID;
+let peerID;
 
-app.get("/", (req, res) => {
-  res.send("Hello world!");
+const uid = new ShortUniqueId({ length: 10 });
+let winList = [
+  [1, 2, 3],
+  [4, 5, 6],
+  [7, 8, 9],
+  [1, 5, 9],
+  [3, 5, 7],
+  [1, 4, 7],
+  [2, 5, 8],
+  [3, 6, 9],
+];
+[1, 2, 4, 5, 3];
+
+function winCheck(moves) {
+  winList.forEach((winPtrn, index) => {
+    if (winPtrn.every((item) => moves.includes(item))) return true;
+  });
+  return false;
+}
+
+const room = new Map();
+const socket = WebSocketServer({ port: PORT });
+
+socket.on("connection", (ws) => {
+  ws.on("message", (message) => {
+    const data = JSON.parse(message);
+    switch (data.type) {
+      case "create":
+        // create a new room
+        roomID = uid.rnd();
+        hostID = uid.rnd();
+        room.set(roomID, new Map());
+        room.get(roomID).set("host", [ws, hostID]);
+        ws.send(
+          JSON.stringify({
+            type: "room-created",
+            roomID,
+            hostID,
+          })
+        );
+        break;
+      case "join":
+        peerID = uid.rnd();
+        if (room.get(data.roomID)) {
+          room.get(data.roomID).set("peer", [ws, peerID]);
+        }
+        ws.send(
+          JSON.stringify({
+            type: "peer-joined",
+            peerID,
+          })
+        );
+        room
+          .get(data.roomID)
+          .get("host")[0]
+          .send(
+            JSON.stringify({
+              type: "start-game",
+            })
+          );
+        break;
+      case "player-done":
+        if (winCheck(data.moves)) {
+          room.get(data.roomID).forEach((obj, index) => {
+            console.log(obj);
+          });
+        }
+        break;
+    }
+  });
+  ws.on("disconnect", () => console.log("player disconnected"));
 });
 
-app.listen(PORT, () => {
-  console.log(`server running at ${PORT}`);
-});
+// app.get("/", (req, res) => {
+//   res.send("Hello world!");
+// });
+
+// app.listen(PORT, () => {
+//   console.log(`server running at ${PORT}`);
+// });
