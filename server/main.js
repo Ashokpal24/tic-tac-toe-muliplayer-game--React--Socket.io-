@@ -1,6 +1,6 @@
 // const express = require("express");
 const { WebSocketServer } = require("ws");
-const { ShortUniqueId } = require("short-unique-id");
+const ShortUniqueId = require("short-unique-id");
 // const app = express();
 const PORT = 3000;
 let roomID;
@@ -28,8 +28,7 @@ function winCheck(moves) {
 }
 
 const room = new Map();
-const socket = WebSocketServer({ port: PORT });
-
+const socket = new WebSocketServer({ port: PORT });
 socket.on("connection", (ws) => {
   ws.on("message", (message) => {
     const data = JSON.parse(message);
@@ -47,37 +46,63 @@ socket.on("connection", (ws) => {
             hostID,
           })
         );
+        console.log(room);
+
         break;
       case "join":
         peerID = uid.rnd();
         if (room.get(data.roomID)) {
           room.get(data.roomID).set("peer", [ws, peerID]);
-        }
-        ws.send(
-          JSON.stringify({
-            type: "peer-joined",
-            peerID,
-          })
-        );
-        room
-          .get(data.roomID)
-          .get("host")[0]
-          .send(
+          ws.send(
             JSON.stringify({
-              type: "start-game",
+              type: "peer-joined",
+              peerID,
             })
           );
-        break;
-      case "player-done":
-        if (winCheck(data.moves)) {
-          room.get(data.roomID).forEach((obj, index) => {
-            console.log(obj);
-          });
+          room
+            .get(data.roomID)
+            .get("host")[0]
+            .send(
+              JSON.stringify({
+                type: "start-game",
+              })
+            );
+          console.log(room);
         }
         break;
+
+      // case "player-done":
+      //   if (winCheck(data.moves)) {
+      //     room.get(data.roomID).forEach((obj, index) => {
+      //       console.log(obj);
+      //     });
+      //   }
+      //   break;
     }
   });
-  ws.on("disconnect", () => console.log("player disconnected"));
+  ws.on("close", () =>
+    Array.from(room.keys()).forEach((key, index) => {
+      const obj = room.get(key);
+      if (obj.get("host")[0] == ws) {
+        if (obj.has("peer")) {
+          obj.get("peer")[0].send(
+            JSON.stringify({
+              type: "host-disconnected",
+            })
+          );
+        }
+        room.delete(key);
+      } else {
+        obj.get("host")[0].send(
+          JSON.stringify({
+            type: "peer-disconnected",
+          })
+        );
+        room.get(key).delete("peer");
+      }
+      console.log(room);
+    })
+  );
 });
 
 // app.get("/", (req, res) => {

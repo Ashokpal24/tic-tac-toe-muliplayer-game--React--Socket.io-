@@ -1,11 +1,12 @@
 {
   "dependencies": {
     "express": "^4.21.1",
+    "nodemon": "^3.1.7",
     "short-unique-id": "^5.2.0",
     "socket.io": "^4.8.1",
     "ws": "^8.18.0"
   },
   "scripts": {
-    "server:start": "node main.js"
+    "server": "nodemon main.js"
   }
 }

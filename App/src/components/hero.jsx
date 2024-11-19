@@ -24,7 +24,7 @@ const HeroPageComponent = () => {
                 justifyContent: "space-between"
             }}>
                 <Button
-                    onClick={() => navigate("/game")}
+                    onClick={() => navigate("/game", { state: { ishost: true } })}
                     style={{
                         alignSelf: "stretch",
                         width: "100px"
@@ -49,7 +49,7 @@ const HeroPageComponent = () => {
                     />
                     {roomID &&
                         <Button
-                            onClick={() => navigate("/game", { state: { message: roomID } })}
+                            onClick={() => navigate("/game", { state: { roomID: roomID, ishost: false } })}
                             style={{
                                 marginLeft: "1rem",
                                 alignSelf: "stretch",
