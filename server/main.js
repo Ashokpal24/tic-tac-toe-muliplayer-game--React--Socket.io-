@@ -2,7 +2,7 @@
 const { WebSocketServer } = require("ws");
 const ShortUniqueId = require("short-unique-id");
 // const app = express();
-const PORT = 3000;
+const PORT = 8000;
 let roomID;
 let hostID;
 let peerID;
@@ -18,13 +18,11 @@ let winList = [
   [2, 5, 8],
   [3, 6, 9],
 ];
-[1, 2, 4, 5, 3];
 
 function winCheck(moves) {
-  winList.forEach((winPtrn, index) => {
-    if (winPtrn.every((item) => moves.includes(item))) return true;
-  });
-  return false;
+  return winList.some(
+    (winPtrn) => winPtrn.every((item) => moves.includes(item)) == true
+  );
 }
 
 const room = new Map();
@@ -47,7 +45,6 @@ socket.on("connection", (ws) => {
           })
         );
         console.log(room);
-
         break;
       case "join":
         peerID = uid.rnd();
@@ -71,13 +68,42 @@ socket.on("connection", (ws) => {
         }
         break;
 
-      // case "player-done":
-      //   if (winCheck(data.moves)) {
-      //     room.get(data.roomID).forEach((obj, index) => {
-      //       console.log(obj);
-      //     });
-      //   }
-      //   break;
+      case "player-turn-completed":
+        if (winCheck(data.moves)) {
+          ws.send(
+            JSON.stringify({
+              type: "player-win",
+              playerID: data.playerID,
+            })
+          );
+        } else {
+          try {
+            if (data.playerID == peerID) {
+              room
+                .get(data.roomID)
+                .get("host")[0]
+                .send(
+                  JSON.stringify({
+                    type: "player-turn",
+                    gridValue: data.gridValue,
+                  })
+                );
+            } else {
+              room
+                .get(data.roomID)
+                .get("peer")[0]
+                .send(
+                  JSON.stringify({
+                    type: "player-turn",
+                    gridValue: data.gridValue,
+                  })
+                );
+            }
+          } catch (error) {
+            console.log(error);
+          }
+          break;
+        }
     }
   });
   ws.on("close", () =>

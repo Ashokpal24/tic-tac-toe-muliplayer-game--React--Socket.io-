@@ -1,16 +1,18 @@
 import { useLocation } from "react-router-dom"
 import { Grid2 as Grid } from "@mui/material"
-import { Clear as Cross } from "@mui/icons-material"
+import { CompressOutlined, Clear as Cross } from "@mui/icons-material"
 import { RadioButtonUnchecked as Circle } from "@mui/icons-material"
 import { useEffect, useState } from "react"
 
 let socket
-function multiplayer({ setRoomID, setSelfID, isHost, roomID }) {
+function multiplayer({ setRoomID, setSelfID, setCanPlay, setGridValue, isHost, roomID }) {
     if (socket && (socket.readystate === WebSocket.OPEN || socket.readyState === WebSocket.OPEN)) {
         console.log("Closing existing WebSocket connection...");
         socket.close();
     }
-    socket = new WebSocket("wss://crispy-capybara-xqv4qqrpwwg25wr-3000.app.github.dev/")
+    let selfIDTemp
+    let roomIDTemp
+    socket = new WebSocket("wss://crispy-capybara-xqv4qqrpwwg25wr-8000.app.github.dev/")
     socket.onopen = () => {
         if (socket.readyState === WebSocket.OPEN) {
             console.log("connected", isHost)
@@ -32,11 +34,21 @@ function multiplayer({ setRoomID, setSelfID, isHost, roomID }) {
             case "room-created":
                 setSelfID(data.hostID)
                 setRoomID(data.roomID)
+                selfIDTemp = data.hostID
+                roomIDTemp = data.roomID
                 break
             case "peer-joined":
                 setSelfID(data.peerID)
+                selfIDTemp = data.peerID
                 break
-
+            case "player-turn":
+                console.log('My turn!')
+                setCanPlay(true)
+                setGridValue(data.gridValue)
+            case "player-win":
+                if (selfIDTemp == data.playerID) {
+                    console.log("I won!!")
+                }
         }
     }
 
@@ -44,11 +56,23 @@ function multiplayer({ setRoomID, setSelfID, isHost, roomID }) {
 const GamePageComponent = () => {
     const location = useLocation()
     const [gridValue, setGridValue] = useState(Array(9).fill(null))
-    const [currSign, setCurrSign] = useState(false)
+    const [indexValue, setIndexValue] = useState([])
     const [isHost, setIsHost] = useState(location.state.ishost)
     const [roomID, setRoomID] = useState(location.state.roomID || '')
     const [selfID, setSelfID] = useState("")
-    useEffect(() => multiplayer({ setRoomID, setSelfID, isHost, roomID }), [])
+    const [canPlay, setCanPlay] = useState(location.state.ishost)
+    useEffect(() => multiplayer({ setRoomID, setSelfID, setCanPlay, setGridValue, isHost, roomID }), [])
+    useEffect(() => {
+        console.log(indexValue)
+        if (!canPlay && indexValue.length > 0)
+            socket.send(JSON.stringify({
+                type: "player-turn-completed",
+                moves: indexValue,
+                playerID: selfID,
+                roomID: roomID,
+                gridValue: gridValue
+            }))
+    }, [indexValue])
     const handleCurrValue = ({ index }) => {
         if (gridValue[index] == "o") {
             return <Circle sx={{ fontSize: 80, color: "red" }} />
@@ -78,7 +102,9 @@ const GamePageComponent = () => {
                         <Grid size={4} key={val}>
                             <div
                                 onClick={() => {
-                                    if (currSign == false) {
+                                    if (gridValue[val] != null) return
+                                    if (!canPlay) return
+                                    if (isHost == true) {
                                         setGridValue(prevArray => {
                                             const newArray = [...prevArray]
                                             newArray[val] = "x"
@@ -92,7 +118,12 @@ const GamePageComponent = () => {
                                             return newArray
                                         })
                                     }
-                                    setCurrSign(!currSign)
+                                    setIndexValue(prevArray => {
+                                        const newArray = [...prevArray]
+                                        newArray.push(val + 1)
+                                        return newArray
+                                    })
+                                    setCanPlay(false)
                                 }}
                                 style={{
                                     height: "100px",
@@ -101,7 +132,8 @@ const GamePageComponent = () => {
                                     borderRadius: "1rem",
                                     textAlign: 'center',
                                     alignContent: "center",
-                                    cursor: "pointer"
+                                    cursor: (canPlay == true && gridValue[val] == null) ? "pointer" : "not-allowed"
+
                                 }}>{handleCurrValue({ index: val })}</div>
                         </Grid>
                     ))
