@@ -45,10 +45,13 @@ function multiplayer({ setRoomID, setSelfID, setCanPlay, setGridValue, isHost, r
                 console.log('My turn!')
                 setCanPlay(true)
                 setGridValue(data.gridValue)
+                break
             case "player-win":
                 if (selfIDTemp == data.playerID) {
                     console.log("I won!!")
                 }
+                else console.log("I lost :(")
+                break
         }
     }
 

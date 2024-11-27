@@ -70,12 +70,25 @@ socket.on("connection", (ws) => {
 
       case "player-turn-completed":
         if (winCheck(data.moves)) {
-          ws.send(
-            JSON.stringify({
-              type: "player-win",
-              playerID: data.playerID,
-            })
-          );
+          console.log(data.playerID, "won");
+          room
+            .get(data.roomID)
+            .get("host")[0]
+            .send(
+              JSON.stringify({
+                type: "player-win",
+                playerID: data.playerID,
+              })
+            );
+          room
+            .get(data.roomID)
+            .get("peer")[0]
+            .send(
+              JSON.stringify({
+                type: "player-win",
+                playerID: data.playerID,
+              })
+            );
         } else {
           try {
             if (data.playerID == peerID) {
